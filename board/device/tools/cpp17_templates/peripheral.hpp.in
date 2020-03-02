@@ -1,0 +1,72 @@
+/**
+ * Device: {{device_meta.name}}
+ * Vendor: {{device_meta.vendor}}
+ * Version: {{device_meta.version}}
+ * Peripheral: {{peripheral.name}}
+ * {{peripheral.description}}
+ */
+#pragma once
+
+#include "register.hpp"
+#include <cstdint>
+
+{% macro make_valid_name(label, prefix) %}
+{%- if label[0] in '0123456789' %}{{prefix}}{% endif %}{{label}}
+{%- endmacro -%}
+
+{%- macro possible_multiline_comment(comment, indent) %}
+{%- if comment.startswith('//') or comment.startswith('///') or comment.startswith('/*') %}{{ comment | replace('\n', '\n'+indent) }}
+{%- else %}/// {{comment | replace('\n', ' ') }}
+{%- endif %}
+{%- endmacro -%}
+
+namespace sfr {
+
+    namespace {{peripheral.name}} {
+    {% for reg in peripheral.registers %}{% for f in reg._fields %}{% if f.is_enumerated_type %}{% if not force_bools or f.bit_width > 1 %}
+        {{ possible_multiline_comment(f.description, '        ') }}
+        enum class {{f.name}}v : uint{{reg._size}}_t {
+    {%- for value in f.enumerated_values %}
+            {%- if value.value != None %}
+            {{ make_valid_name(value.name, 'v') }} = {{ "0x%X"|format(value.value) }}, //< {{ value.description | replace('\n', ' ') }}
+            {%- else %}
+            // {{value.name}} = {{ value.description | replace('\n', ' ') }}
+            {%- endif %}
+    {%- endfor %}
+        };
+    {% endif %}{% endif %}{% endfor %}{% endfor %}
+    }   // namespace {{peripheral.name}}
+
+    {{ possible_multiline_comment(peripheral.description, '    ') }}
+    template <addressType BASE_ADDRESS>
+    struct {{peripheral.name}}_t {
+        static constexpr addressType BaseAddress = BASE_ADDRESS;
+    {%- for reg in peripheral.registers %}
+
+        /**
+         * {{reg.name}} - {{ (reg._size/8)|int }} bytes at offset {{ reg.address_offset }}
+         * {{reg.description}}
+         * Access: {{ reg._access }}
+         * Protection: {{ reg._protection }}
+         * Write side-effects: {{ reg._modified_write_values }}
+         * Read side-effects: {{ reg._read_action }}
+         */
+        static constexpr struct {{reg.name}}_t : reg_t<uint{{reg._size}}_t, BASE_ADDRESS + {{"0x%0X"|format(reg.address_offset)}}{%if reg._access == 'read-only'%}, AccessType::read_only{%endif%}> {
+            using reg_t<uint{{reg._size}}_t, BASE_ADDRESS + {{"0x%0X"|format(reg.address_offset)}}{%if reg._access == 'read-only'%}, AccessType::read_only{%endif%}>::operator=;
+            static constexpr uint{{reg._size}}_t reset_mask  = {{"0x%0X"|format(reg._reset_mask)}};
+            static constexpr uint{{reg._size}}_t reset_value = {{"0x%0X"|format(reg._reset_value)}};
+    {%- for field in reg._fields %}
+    {%- if field.is_enumerated_type and (not force_bools or field.bit_width > 1) %}{% set field_type = peripheral.name+'::'+field.name+'v' %}
+    {%- elif field.bit_width == 1 %}{% set field_type = 'bool' %}
+    {%- else %}{% set field_type = None %}
+    {%- endif %}
+
+            {{ possible_multiline_comment(field.description, '            ') }}
+            static constexpr bitfield_t<{{reg.name}}_t, {{field.bit_offset + field.bit_width - 1}}, {{field.bit_offset}}{% if field_type %}, {{field_type}}{% endif %}> {{field.name}} = {};
+    {%- endfor %}
+        } {{reg.name}} = {};
+
+    {%- endfor %}
+    };  // end of struct {{ peripheral.name }}_t
+
+} // namespace sfr
