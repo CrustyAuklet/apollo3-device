@@ -581,11 +581,17 @@ namespace sfr {
             M5MISO = 0x5, //< Configure as the IOMSTR5 SPI MISO input signal
         };
 
-        template<unsigned pin>
-        concept HasPullups = pin == 0 || pin == 1 || pin == 5 || pin == 6 || pin == 8;
+        constexpr bool has_pullups(const unsigned pin) {
+            return pin == 0 || pin == 1 || pin == 5 || pin == 6 || pin == 8;
+        }
 
-        template<unsigned pin>
-        concept LowSideSwitch = pin == 37 || pin == 41;
+        constexpr bool has_lowside_switch(const unsigned pin) {
+            return pin == 37 || pin == 41;
+        }
+
+        constexpr bool has_highside_switch(const unsigned pin) {
+            return pin == 3 || pin == 36;
+        }
 
     }   // namespace GPIO
 
@@ -618,23 +624,6 @@ namespace sfr {
             /// Pad input enable
             static constexpr bitfield_t<PADREG_t<PinOffset>, 1, 1, bool> INPEN = {};
 
-            /// Pad pullup enable - PullUp on all pins except 20, pin 20 has a pulldown!
-            static constexpr bitfield_t<PADREG_t<PinOffset>, 0, 0, bool> PULL = {};
-        };
-
-        template <GPIO::LowSideSwitch PinOffset>
-        struct PADREG_t<GPIO::LowSideSwitch> : reg_t<uint8_t, BASE_ADDRESS + 0x0 + PinOffset> {
-            using reg_t<uint8_t, BASE_ADDRESS + PinOffset>::operator=;
-            static constexpr uint32_t reset_mask  = 0xFF;
-            static constexpr uint32_t reset_value = 0x18;
-            /// Pad 37/41 VDD low side power switch enable - ONLY PAD 37 and 41!
-            static constexpr bitfield_t<PADREG_t<PinOffset>, 7, 7, GPIO::PADRSELv> PWRDN = {};
-            /// Pad function select
-            static constexpr bitfield_t<PADREG_t<PinOffset>, 5, 3, GPIO::PAD0FNCSELv> FNCSEL = {};
-            /// Pad drive strength
-            static constexpr bitfield_t<PADREG_t<PinOffset>, 2, 2, bool> STRNG = {};
-            /// Pad input enable
-            static constexpr bitfield_t<PADREG_t<PinOffset>, 1, 1, bool> INPEN = {};
             /// Pad pullup enable - PullUp on all pins except 20, pin 20 has a pulldown!
             static constexpr bitfield_t<PADREG_t<PinOffset>, 0, 0, bool> PULL = {};
         };

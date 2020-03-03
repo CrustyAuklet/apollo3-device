@@ -5,14 +5,20 @@
 #include <type_traits>
 #include <algorithm>
 
+#include "GPIO.hpp"
+
 namespace GPIO {
-    template <class PORT, unsigned PIN>
+
+    //template <class PORT, unsigned PIN>
     struct pin {
+        static constexpr unsigned PIN = 10;
+        static constexpr sfr::GPIO_t< 0x40010000 > Port{};
         static_assert(PIN < 49, "PIN value in gpio_pin must be a number 0-49");
-        static constexpr PORT Port{};           // GPIO instance or port this pin uses
+        //static constexpr PORT Port{};           // GPIO instance or port this pin uses
 
         /// sets the pin to the expected startup state. Base class version does nothing.
         constexpr void init() const noexcept {
+            decltype(Port)::PADREG_t<PIN>{}.
         }
 
         /// Set the pin as an output
